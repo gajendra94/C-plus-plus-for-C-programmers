@@ -1,0 +1,513 @@
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+class HexBoard
+{
+private:
+    vector< vector<char> > ch;   // char array to print the Board
+
+    int sz;                     // variable to store the size of the board
+
+    char choice;                 // variable to store the choice of who wanna go first
+
+    string location;             // variable to take the input from the user as which position they wanna occupy on the board
+
+    vector< vector<int> > vertices;  // array to represent the edge list representation of the graph
+
+    vector< vector<int> > copyArray;
+
+    void printHexBoard();           // method to print the board
+
+    void play();                    // method to play the Game
+
+    bool islegal(string str , char c);  // method to check whether a move is lega; or not
+
+    void hexGraph();                    // to make the board represented as the graph
+
+    bool won(int source , char c);      // method to check whether the player has won the game or not
+
+    bool computerWin(int source);
+
+    int computerMove();
+
+public:
+
+    HexBoard(int size);                            // constructor for the class HexBoard
+
+    void start();                           // method to start the game
+
+};
+
+HexBoard::HexBoard( int size):sz(size)
+{
+    ch.resize(sz +1);
+    copyArray.resize(sz+1);
+    vertices.resize(sz*sz+4);
+
+    for(int i=0 ; i<sz ; i++)                // initially as all places are empty so all positions are given '.' symbol
+        for(int j=0 ; j<sz ; j++)
+        {
+            ch[i].push_back('.');
+            copyArray[i].push_back('.');
+        }
+    ch[sz].push_back('O');                   // two virtual nodes for 'O' on either side
+    ch[sz].push_back('O');
+    ch[sz].push_back('X');                   // two virtual nodes for 'X' on either side
+    ch[sz].push_back('X');
+    copyArray[sz].push_back('O');
+    copyArray[sz].push_back('O');
+}
+
+void HexBoard::printHexBoard()                // prints the board after every update in the position
+{
+    static int k = 0;
+    for(int i=0 ; i<80 ; i++)
+        cout<<'-';
+    cout<<"\nBoard(after "<<k++<<" moves)\n";
+    char x = 'A';
+    int y = 1;
+
+    cout<<"\n             North"<<endl;
+    for(int i=0 ; i<2 ; i++)
+        cout<<"              |"<<endl;
+    cout<<"       West------->East"<<endl;
+    cout<<"              |"<<endl;
+    cout<<"              v"<<endl;
+    cout<<"            South\n"<<endl;
+
+    cout<<"   ";
+    for(int i=0 ; i<sz ; i++)
+        cout<<static_cast<char>(x+i)<<"  ";
+
+    cout<<endl;
+
+    for(int i=0 ; i<sz ; i++)
+    {
+        int j=i;
+        while(j--)
+        {
+                cout<<" ";
+        }
+
+        cout<<" "<<y+i<<" ";
+
+        j = 0;
+
+        while(j < sz)
+        {
+            cout<<ch[i][j]<<"  ";
+            j++;
+        }
+
+            cout<<y+i<<"\n\n";
+
+    }
+
+    int j=sz+4;
+
+    while(j--)
+        cout<<" ";
+
+    for(int i=0 ; i<sz ; i++)
+        cout<<static_cast<char>(x+i)<<"  ";
+
+    cout<<"\n\n";
+
+
+    for(int i=0 ; i<80 ; i++)
+        cout<<'-';
+}
+
+void HexBoard::start()
+{
+    for(int i=0 ; i<80 ; i++)
+        cout<<"-";
+    hexGraph();
+    cout<<endl;
+    cout<<"Player's   piece :  X   : connect West to East "<<endl;         //gives information of  player1
+    cout<<"Computer's piece :  O   : connect North to South"<<endl;       // gives information of player2
+    cout<<endl;
+    play();
+}
+
+void HexBoard::hexGraph()
+{
+    for(int i=0 ; i<sz*sz ; i++)
+    {
+        if(i%sz == 0)   // for the left side  edges
+        {
+            if(i!=sz*(sz-1))
+            {
+                vertices[i].push_back(i+sz);
+                vertices[i+sz].push_back(i);
+                vertices[i].push_back(i+1);
+                vertices[i+1].push_back(i);
+            }
+            else
+            {
+                vertices[i].push_back(i+1);
+                vertices[i+1].push_back(i);
+            }
+        }
+        else
+        {
+            if(i%sz == sz-1) // for right side edges
+            {
+                if(i!=(sz*sz)-1)
+                {
+                    vertices[i].push_back(i+sz-1);
+                    vertices[i+sz-1].push_back(i);
+                    vertices[i].push_back(i+sz);
+                    vertices[i+sz].push_back(i);
+                }
+            }
+            else  // for centre edges
+            {
+                if(i<sz*(sz-1))
+                {
+                    vertices[i].push_back(i+1);
+                    vertices[i+1].push_back(i);
+                    vertices[i].push_back(i+sz-1);
+                    vertices[i+sz-1].push_back(i);
+                    vertices[i].push_back(i+sz);
+                    vertices[i+sz].push_back(i);
+                }
+                else  // for bottom edges
+                {
+                    vertices[i].push_back(i+1);
+                    vertices[i+1].push_back(i);
+                }
+            }
+        }
+    }
+
+    for(int i=0 ; i<sz ; i++)   // for virtual nodes
+    {
+        vertices[i].push_back(sz*sz);
+
+        vertices[i+sz*(sz-1)].push_back(sz*sz+1);
+
+        vertices[i*sz].push_back(sz*sz+2);
+
+        vertices[i*sz + sz-1].push_back(sz*sz+3);
+
+    }
+
+}
+
+void HexBoard::play()
+{
+    cout<<"Who want to go first? For Player press 'X' else press 'O'"<<endl;  // ask for the choice
+    cin>>choice;
+    while(!(choice=='X'|| choice=='x') && !(choice=='O' || choice=='o'))             // checks whether the choice is valid or not
+     {
+        cout<<"Wrong choice"<<endl;
+        cout<<"Enter Either 'X' or 'O'"<<endl;
+        cout<<"Again Enter:";
+        cin>>choice;
+     }
+
+    printHexBoard();                                                                               // prints the hexboard
+
+    while(true)
+    {
+        if(choice == 'X' || choice == 'x')
+        {
+            cout<<"\nPlayer Move(X)"<<endl;                                          // ask player1 to enter the location which he/she wanna occupy on board
+            cout<<"Enter location: ";
+            location.clear();
+            cin>>location;
+
+            while(!islegal(location , 'X'))                                                     // checks whether the location entered is legal or not
+            {
+                cout<<"Again Enter the Location:";
+                location.clear();
+                cin>>location;
+            }
+
+            int i = static_cast<int>(location[0]-'A');                                    // converts the location entered into the corresponding character array position
+            int j;
+            if(location[2])
+                 j = static_cast<int>((location[1]-'0')*10 + (location[2]-'0') - 1);
+            else
+                 j = static_cast<int>(location[1]-'1');
+
+            ch[j][i] = 'X';
+
+            int k = j*sz + i;
+
+            if(won(k , 'X'))                                                                          // checks if there is a winner
+            {
+                printHexBoard();
+                cout<<"\nPlayer1 WON!!"<<endl;
+                    break;
+            }
+            else
+                choice = 'O';
+        }
+       else    // does the same thing for player2
+        {
+            cout<<"\nComputer's Move(O)"<<endl;
+
+            int cMove = computerMove();
+
+            int i = cMove%sz;
+            int j = cMove/sz;
+
+            ch[j][i] = 'O';
+
+            cout<<ch[j][i];
+
+            if(won(cMove , 'O'))
+            {
+                printHexBoard();
+                cout<<"\nComputer WON!!"<<endl;
+                    break;
+            }
+            else
+                choice = 'X';
+        }
+            printHexBoard();
+    }
+}
+
+int HexBoard::computerMove()
+{
+    vector<int> empty_point;
+    vector<int> empty_point_shuffle;
+    vector<int> position;
+    priority_queue< pair<int , int> > pq;
+
+    for(int i=0 ; i<sz ; i++)
+        for(int j=0 ; j<sz  ;j++)
+        {
+            position.push_back(0);
+
+            if(ch[i][j]=='.')
+                empty_point.push_back(i*sz+j);
+        }
+
+
+    for(int i=0 ; i<empty_point.size() ; i++)
+    {
+        int j=0;
+
+        while(j<=1000)
+        {
+            empty_point_shuffle.clear();
+            for(int p=0 ; p<sz ; p++)
+                for(int q=0 ; q<sz ; q++ )
+                {
+                    copyArray[p][q] = ch[p][q];
+                    if(ch[p][q]=='.')
+                        empty_point_shuffle.push_back(p*sz+q);
+                }
+
+            copyArray[empty_point[i]/sz][empty_point[i]%sz] = 'O';
+
+            random_shuffle(empty_point_shuffle.begin() , empty_point_shuffle.end());
+
+            for(int k=0 ; k<(empty_point.size()/2)-1 ; k++)
+            {
+                if(empty_point_shuffle[k]!=empty_point[i])
+                {
+                    copyArray[empty_point_shuffle[k]/sz][empty_point_shuffle[k]%sz] = 'O';
+                }
+                else
+                {
+                    copyArray[empty_point_shuffle[(empty_point_shuffle.size()/2-1)]/sz][empty_point_shuffle[(empty_point_shuffle.size()/2-1)]%sz] = 'O';
+                }
+            }
+
+            if(computerWin(empty_point[i]))
+            {
+                position[empty_point[i]]++;
+            }
+            j++;
+        }
+        pq.push(make_pair(position[empty_point[i]],empty_point[i]));
+    }
+
+    return pq.top().second;
+}
+
+bool HexBoard::computerWin(int source)
+{
+    queue<int> Q;
+    vector<int> vertexColor(sz*sz+4);                                                              // creates an array of 125 members to store the edge color for doing the BFS
+    vector<int> result;
+
+    enum color{WHITE , GREY , BLACK};
+
+    for(vector<int>::iterator i = vertexColor.begin() ; i!=vertexColor.end() ; i++)         // initialise all nodes with white color
+        *i=WHITE;
+
+    Q.push(source);
+    vertexColor[source] = GREY;                                                           // after pushing the node on the queue its color is changed to GREY means it is in the queue
+
+    while(!Q.empty())                                                                           // BFS is done on here to find if there is a winner
+    {
+        int u = Q.front();
+
+        Q.pop();
+
+        vertexColor[u] = BLACK;                                                         // once a node is popped from the queue its color is changed to black means the node got visited
+
+        result.push_back(u);                                                             // stores the member pushed from the queue into a result array
+
+        for(int i=0 ; i<vertices[u].size() ; i++)
+        {
+
+            int divisor , remainder;
+
+            if(sz==3 && vertices[u][i]==12)
+            {
+                divisor = 3;
+                remainder = 4;
+            }
+            else
+            {
+             divisor = static_cast<int>(vertices[u][i])/sz;                        // to convert the node number to the corresponding member in the character array
+             remainder = static_cast<int>(vertices[u][i])%sz;
+            }
+
+            if(copyArray[divisor][remainder]=='O' && vertexColor[vertices[u][i]] == WHITE)
+            {
+                Q.push(vertices[u][i]);
+                vertexColor[vertices[u][i]] = GREY;
+            }
+        }
+    }
+
+    sort(result.begin() , result.end());   // sort the array
+
+    if(binary_search(result.begin(), result.end() ,sz*sz) && binary_search(result.begin() , result.end() , sz*sz+1))
+        return true;
+    return false;
+
+}
+
+bool HexBoard::islegal(string str , char c)                                                          // checks whether the move entered is legal or not
+{
+    if((str[0]-'0'>=1 && str[0]-'0'<=sz) || str[0]>=('A'+sz) || str[1]==NULL )               // if first letter entered is a number than it is a illegal move
+    {
+        cout<<"Illegal Move"<<endl;
+        cout<<"Write like 'A6' and not '6A'"<<endl;
+        return false;
+    }
+
+    if(str[1]>='A' && str[1]<='Z')                                                                        // checks if the second letter entered is not  a character
+    {
+        cout<<"Illegal Move"<<endl;
+        cout<<"Write like 'A6' and not 'AA'"<<endl;
+        return false;
+    }
+
+    int i = static_cast<int>(str[0]-'A');
+    int j;
+    if(str[2])
+        j = static_cast<int>((str[1]-'0')*10 + (str[2]-'0') - 1);
+    else
+        j = static_cast<int> (str[1]-'1');
+
+    if(i>=sz || j>=sz)
+    {
+        cout<<"Location doesn't exists"<<endl;
+        return false;
+    }
+
+    if(ch[j][i]!= '.')                                                                                  // checks if the location entered is not already occupied
+    {
+        cout<<"Illegal Move:"<<endl;
+        cout<<"Place Already Occupied"<<endl;
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+bool HexBoard::won(int source , char c)
+{
+    queue<int> Q;
+    vector <int> vertexColor(sz*sz+4);                                                              // creates an array of 125 members to store the edge color for doing the BFS
+    vector<int> result;
+
+    enum color{WHITE , GREY , BLACK};  // enum for different colors
+
+    for(vector<int>::iterator i = vertexColor.begin() ; i!=vertexColor.end() ; i++)         // initialise all nodes with white color
+        *i=WHITE;
+
+    Q.push(source);
+    vertexColor[source] = GREY;                                                           // after pushing the node on the queue its color is changed to GREY means it is in the queue
+
+    while(!Q.empty())                                                                           // BFS is done on here to find if there is a winner
+    {
+        int u = Q.front();
+
+        Q.pop();
+
+        vertexColor[u] = BLACK;                                                         // once a node is popped from the queue its color is changed to black means the node got visited
+
+        result.push_back(u);                                                             // stores the member pushed from the queue into a result arra
+
+        for(int i=0 ; i<vertices[u].size() ; i++)
+        {
+
+            int divisor , remainder;
+
+            if(sz==3 && vertices[u][i]==12)
+            {
+                divisor = 3;
+                remainder = 4;
+            }
+            else
+            {
+                divisor = static_cast<int>(vertices[u][i])/sz;                        // to convert the node number to the corresponding member in the character array
+                remainder = static_cast<int>(vertices[u][i])%sz;
+            }
+
+            if(c == ch[divisor][remainder] && vertexColor[vertices[u][i]] == WHITE)
+            {
+                Q.push(vertices[u][i]);
+                vertexColor[vertices[u][i]] = GREY;
+            }
+        }
+
+    }
+
+
+    sort(result.begin() , result.end());   // sort the array
+
+    if(c=='X')
+    {
+        if(binary_search(result.begin(), result.end() ,sz*sz+2) && binary_search(result.begin() , result.end() , sz*sz+3))
+            return true;                                                                               // search if both the corresponding virtual nodes are in the result array to find the winner
+        return false;
+    }
+    else
+    {
+        if(binary_search(result.begin(), result.end() ,sz*sz) && binary_search(result.begin() , result.end() , sz*sz+1))
+            return true;
+        return false;
+    }
+
+}
+
+
+int main()
+{
+    int size;
+    cout<<"Enter the Board size:";
+    cin>>size;
+    HexBoard h(size);
+    srand(time(NULL));
+    h.start();
+    return 0;
+}
